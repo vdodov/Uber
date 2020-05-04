@@ -45,10 +45,24 @@ class HomeController: UIViewController {
   private var user: User? {
     didSet {
       locationInputView.user = user
+      
       if user?.accountType == .passenger {
         fetchDrivers()
         configureLoactionInputActivationView()
+      } else {
+        observeTrips()
       }
+    }
+  }
+  
+  private var trip: Trip? {
+    didSet {
+      print("DEBUG: Show pickup passenger controller..")
+      guard let trip = trip else { return }
+      let controller = PickupController(trip: trip)
+      controller.modalPresentationStyle = .fullScreen
+      controller.delegate = self
+      self.present(controller, animated: true, completion: nil)
     }
   }
   
@@ -66,6 +80,13 @@ class HomeController: UIViewController {
     super.viewDidLoad()
     checkIfUserIsLoggedIn()
     enableLocationServices()
+  }
+  
+  override func viewWillAppear(_ animated: Bool) {
+    super.viewWillAppear(animated)
+    
+    guard let trip = trip else { return }
+    print("DEBUG: Trip state is \(trip.state)")
     
   }
   
@@ -120,6 +141,12 @@ class HomeController: UIViewController {
       if !driverIsVisible {
         self.mapView.addAnnotation(annotation)
       }
+    }
+  }
+  
+  func observeTrips() {
+    Service.shared.observeTrips { trip in
+      self.trip = trip
     }
   }
   
@@ -458,4 +485,13 @@ extension HomeController: RideActionViewDelegate {
   }
   
   
+}
+
+// MARK: - PickupControllerDelegate
+
+extension HomeController: PickupControllerDelegate {
+  func didAcceptTrip(_ trip: Trip) {
+    self.trip?.state = .accepted
+    self.dismiss(animated: true, completion: nil)
+  }
 }
